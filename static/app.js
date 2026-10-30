@@ -9,7 +9,13 @@ const apiCallsContainer = document.getElementById("api-calls-container");
 const apiCountBadge = document.getElementById("api-count");
 const btnReset = document.getElementById("btn-reset");
 const btnRunAll = document.getElementById("btn-run-all-scenarios");
+const btnMic = document.getElementById("btn-mic");
+const micStatusBar = document.getElementById("mic-status-bar");
+const btnVoiceToggle = document.getElementById("btn-voice-toggle");
 
+let isVoiceOutputEnabled = true;
+let recognition = null;
+let isListening = false;
 let totalApiCallCount = 0;
 
 // Initialize
@@ -19,6 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupQuickChips();
   setupChatForm();
   setupAutoScroll();
+  setupVoice();
 });
 
 // Setup Auto-scroll Observer
@@ -73,6 +80,8 @@ function setupQuickChips() {
 
 // Reset Session
 btnReset.addEventListener("click", async () => {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  stopListening();
   try {
     await fetch("/api/reset", {
       method: "POST",
@@ -89,7 +98,7 @@ btnReset.addEventListener("click", async () => {
       <div class="avatar bot-avatar">AI</div>
       <div class="bubble">
         <p><strong>Session reset.</strong> Ready for new sales inquiry!</p>
-        <p class="hint-text">Try: <em>"I need arrow mesh wifi on the PRO plan for a 5-room house"</em></p>
+        <p class="hint-text">Try: <em>"I need arrow mesh wifi on the PRO plan for a 5-room house"</em> or click <strong>🎙️</strong> to speak!</p>
       </div>
     </div>
   `;
@@ -120,6 +129,9 @@ function setupChatForm() {
     const text = userInput.value.trim();
     if (!text) return;
 
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
+    stopListening();
+
     // Append user bubble
     appendMessage("user", text);
     userInput.value = "";
@@ -141,12 +153,15 @@ function setupChatForm() {
 
       if (!response.ok) {
         const err = await response.json();
-        appendMessage("bot", `Error: ${err.detail || "Server error"}`);
+        const errText = `Error: ${err.detail || "Server error"}`;
+        appendMessage("bot", errText);
+        speakBotReply(errText);
         return;
       }
 
       const data = await response.json();
       appendMessage("bot", data.reply, data.booking);
+      speakBotReply(data.reply);
 
       // Record API Calls
       if (data.api_calls && data.api_calls.length > 0) {
@@ -159,9 +174,102 @@ function setupChatForm() {
       }
     } catch (err) {
       removeTypingIndicator(typingId);
-      appendMessage("bot", "Network connection error while contacting sales engine.");
+      const netErr = "Network connection error while contacting sales engine.";
+      appendMessage("bot", netErr);
+      speakBotReply(netErr);
     }
   });
+}
+
+// Setup Voice (STT & TTS)
+function setupVoice() {
+  // Voice Output Toggle
+  if (btnVoiceToggle) {
+    btnVoiceToggle.addEventListener("click", () => {
+      isVoiceOutputEnabled = !isVoiceOutputEnabled;
+      if (isVoiceOutputEnabled) {
+        btnVoiceToggle.classList.add("active");
+        btnVoiceToggle.innerText = "🔊 Voice: ON";
+      } else {
+        btnVoiceToggle.classList.remove("active");
+        btnVoiceToggle.innerText = "🔇 Voice: OFF";
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+      }
+    });
+  }
+
+  // Voice Input (Speech Recognition)
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (SpeechRecognition && btnMic) {
+    recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = "en-US";
+
+    recognition.onstart = () => {
+      isListening = true;
+      btnMic.classList.add("listening");
+      if (micStatusBar) micStatusBar.classList.remove("hidden");
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      userInput.value = transcript;
+      stopListening();
+      chatForm.dispatchEvent(new Event("submit"));
+    };
+
+    recognition.onerror = (event) => {
+      console.warn("Speech recognition error:", event.error);
+      stopListening();
+    };
+
+    recognition.onend = () => {
+      stopListening();
+    };
+
+    btnMic.addEventListener("click", () => {
+      if (!isListening) {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.warn("Recognition start error:", e);
+        }
+      } else {
+        recognition.stop();
+        stopListening();
+      }
+    });
+  } else if (btnMic) {
+    btnMic.title = "Voice recognition not supported in this browser (use Chrome or Edge)";
+    btnMic.style.opacity = "0.5";
+  }
+}
+
+function stopListening() {
+  isListening = false;
+  if (btnMic) btnMic.classList.remove("listening");
+  if (micStatusBar) micStatusBar.classList.add("hidden");
+}
+
+function speakBotReply(text) {
+  if (!isVoiceOutputEnabled || !window.speechSynthesis) return;
+  window.speechSynthesis.cancel(); // Stop prior speech to handle mid-response interruption cleanly
+
+  // Clean text for speech
+  const clean = text.replace(/[*_#`~]/g, "").replace(/\$\s*(\d+(\.\d+)?)/g, "$1 dollars");
+  const utterance = new SpeechSynthesisUtterance(clean);
+  utterance.rate = 1.05;
+  utterance.pitch = 1.0;
+
+  const voices = window.speechSynthesis.getVoices();
+  const preferredVoice = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Natural") || v.name.includes("Google") || v.name.includes("Samantha") || v.name.includes("David")));
+  if (preferredVoice) {
+    utterance.voice = preferredVoice;
+  }
+
+  window.speechSynthesis.speak(utterance);
 }
 
 function appendMessage(sender, text, bookingData = null) {

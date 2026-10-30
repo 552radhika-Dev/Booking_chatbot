@@ -27,6 +27,7 @@
         <div class="telemetry-pill active"><span class="dot green"></span> GET /api/catalog Active</div>
         <div class="telemetry-pill active"><span class="dot green"></span> Concurrency Lock Active</div>
         <div class="telemetry-pill active"><span class="dot green"></span> Discount Rules Strict</div>
+        <button id="btn-voice-toggle" class="btn-ghost voice-toggle-btn active" title="Toggle AI Voice Output">🔊 Voice: ON</button>
         <button id="btn-reset" class="btn-ghost" title="Reset Session">↺ Reset Session</button>
       </div>
     </header>
@@ -37,8 +38,8 @@
       <section class="chat-section">
         <div class="section-header">
           <div class="section-title">
-            <span class="icon">💬</span>
-            <h2>Conversational Sales Agent</h2>
+            <span class="icon">🎙️</span>
+            <h2>AI Voice & Sales Chatbot</h2>
           </div>
           <span class="session-id-display">Session: <code id="session-id-text">loading...</code></span>
         </div>
@@ -59,17 +60,26 @@
           <div class="message bot">
             <div class="avatar bot-avatar">AI</div>
             <div class="bubble">
-              <p><strong>Hello! I am your AI Sales Assistant.</strong></p>
+              <p><strong>Hello! I am your AI Voice & Sales Assistant.</strong></p>
               <p>I can help you select the ideal tech package from our catalog (AeroMesh Wi-Fi 6E, SyncHub Conference Bar, AirPods Pro 2nd Gen) tailored to your exact rooms or team size, discuss pricing, and finalize bookings with 100% accuracy.</p>
-              <p class="hint-text">Try asking: <em>"I need arrow mesh wifi on the PRO plan for a 5-room house"</em></p>
+              <p class="hint-text">Type below or click <strong>🎙️ Speak</strong> to talk to me with real-time voice!</p>
             </div>
           </div>
+        </div>
+
+        <!-- Mic Status Bar -->
+        <div id="mic-status-bar" class="mic-status-bar hidden">
+          <span class="pulse-dot"></span>
+          <span>Listening... Speak your requirement or price pushback</span>
         </div>
 
         <!-- Input Bar -->
         <div class="chat-input-bar">
           <form id="chat-form">
-            <input type="text" id="user-input" placeholder="Type a message or negotiation pushback..." autocomplete="off">
+            <button type="button" id="btn-mic" class="btn-mic" title="Speak via Microphone">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <input type="text" id="user-input" placeholder="Type a message or click 🎙️ to speak..." autocomplete="off">
             <button type="submit" id="btn-send" class="btn-primary">
               <span>Send</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
