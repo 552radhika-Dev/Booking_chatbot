@@ -18,7 +18,33 @@ document.addEventListener("DOMContentLoaded", () => {
   setupTabs();
   setupQuickChips();
   setupChatForm();
+  setupAutoScroll();
 });
+
+// Setup Auto-scroll Observer
+function setupAutoScroll() {
+  if (!chatStream) return;
+  const observer = new MutationObserver(() => {
+    scrollToBottom();
+  });
+  observer.observe(chatStream, { childList: true, subtree: true });
+  scrollToBottom(true);
+}
+
+function scrollToBottom(forceInstant = false) {
+  if (!chatStream) return;
+  const doScroll = () => {
+    chatStream.scrollTop = chatStream.scrollHeight;
+    const last = chatStream.lastElementChild;
+    if (last && typeof last.scrollIntoView === "function") {
+      last.scrollIntoView({ behavior: forceInstant ? "auto" : "smooth", block: "end" });
+    }
+  };
+  doScroll();
+  requestAnimationFrame(doScroll);
+  setTimeout(doScroll, 50);
+  setTimeout(doScroll, 150);
+}
 
 // Setup Tabs
 function setupTabs() {
@@ -168,7 +194,7 @@ function appendMessage(sender, text, bookingData = null) {
   msgDiv.appendChild(avatarDiv);
   msgDiv.appendChild(bubbleDiv);
   chatStream.appendChild(msgDiv);
-  chatStream.scrollTop = chatStream.scrollHeight;
+  scrollToBottom();
 }
 
 function appendTypingIndicator() {
@@ -181,13 +207,16 @@ function appendTypingIndicator() {
     <div class="bubble" style="font-style: italic; color: #94a3b8;">Processing turn & evaluating guardrails...</div>
   `;
   chatStream.appendChild(div);
-  chatStream.scrollTop = chatStream.scrollHeight;
+  scrollToBottom();
   return id;
 }
 
 function removeTypingIndicator(id) {
   const el = document.getElementById(id);
-  if (el) el.remove();
+  if (el) {
+    el.remove();
+    scrollToBottom();
+  }
 }
 
 function renderApiCall(call) {
